@@ -1,3 +1,4 @@
+use std::{env, fs, os::unix::fs::PermissionsExt};
 #[allow(unused_imports)]
 use std::io::{self, Write};
 
@@ -40,14 +41,34 @@ fn main() {
                         println!("{} is a shell builtin", command_to_check);
                     }
                     _ => {
-                        println!("{}: not found", command_to_check);
+                        let executable_path = get_executable_path(command_to_check);
+                        if executable_path.is_some() {
+                            println!("{} is {}", command_to_check, executable_path.unwrap());
+                        } else {
+                            println!("{}: not found", command_to_check);
+                        }
                     }
                 }
             }
-            // 3. DEFAULT CASE: Unknown command
+
             _ => {
                 println!("{}: command not found", command);
             }
         }
     }
+}
+
+fn get_executable_path(command: &str) -> Option<String> {
+    let path_var = env::var("PATH").unwrap_or_default();
+
+    let paths = path_var.split(':');
+
+    for path in paths {
+        let full_path = format!("{}/{}", path, command);
+        if fs::metadata(&full_path).map(|m| m.permissions().mode() & 0o111 != 0).unwrap_or(false) {
+            return Some(full_path);
+        }
+    }
+
+    return None;
 }
