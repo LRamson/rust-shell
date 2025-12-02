@@ -51,7 +51,7 @@ fn main() {
 
             _ => {
                 if let Some(executable_path) = get_executable_path(command) {
-                    let status = std::process::Command::new(executable_path)
+                    let status = std::process::Command::new(command)
                         .args(args)
                         .status();
                 } else {
