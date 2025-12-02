@@ -10,17 +10,15 @@ fn main() {
         let mut usr_input = String::new();
         io::stdin().read_line(&mut usr_input).unwrap();
 
-        // 1. SAFETY FIX: Handle empty input (just hitting Enter)
         let trimmed_input = usr_input.trim();
         if trimmed_input.is_empty() {
-            continue; // Skip the rest of the loop and show "$ " again
+            continue; 
         }
 
         let parts: Vec<&str> = trimmed_input.split_whitespace().collect();
         let command = parts[0];
         let args = &parts[1..];
 
-        // 2. ORGANIZATION: Use 'match' instead of if/else
         match command {
             "exit" => break,
             "echo" => {
@@ -52,7 +50,13 @@ fn main() {
             }
 
             _ => {
-                println!("{}: command not found", command);
+                if let Some(executable_path) = get_executable_path(command) {
+                    let status = std::process::Command::new(executable_path)
+                        .args(args)
+                        .status();
+                } else {
+                    println!("{}: command not found", command);
+                }
             }
         }
     }
