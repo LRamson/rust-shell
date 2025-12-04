@@ -4,10 +4,19 @@ use std::path::Path;
 
 pub struct CdCommand;
 
+
 impl Command for CdCommand {
     fn execute(&self, args: &[&str], _: &CommandRegistry) -> Result<ShellStatus, String> {
         if args.is_empty() {
              return Ok(ShellStatus::Continue);
+        }
+
+        if args[0] == "~" {
+            let home_path: String = env::var("HOME").unwrap_or_default();
+            if let Err(_) = env::set_current_dir(&home_path) {
+                return Err(format!("cd: {}: No such file or directory", home_path));
+            }
+            return Ok(ShellStatus::Continue);
         }
 
         let new_dir = args[0];
