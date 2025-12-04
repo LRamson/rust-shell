@@ -7,10 +7,18 @@ pub fn parse_input(input: &str) -> Vec<String> {
     for c in input.chars() {
         match c {
             '\'' => {
-                in_quotes = !in_quotes;
+                if !in_double_quotes {
+                    in_quotes = !in_quotes;
+                } else {
+                    current_arg.push(c);
+                }
             },
             '"' => {
-                in_double_quotes = !in_double_quotes;
+                if !in_quotes {
+                    in_double_quotes = !in_double_quotes;
+                } else {
+                    current_arg.push(c);
+                }
             },
             c if c.is_whitespace()=> {
                 if in_quotes || in_double_quotes {
