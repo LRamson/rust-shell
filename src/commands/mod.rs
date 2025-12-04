@@ -2,6 +2,7 @@ mod echo;
 mod exit;
 mod type_cmd;
 mod registry;
+mod pwd;
 
 pub use registry::CommandRegistry;
 
