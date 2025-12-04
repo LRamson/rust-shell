@@ -20,7 +20,7 @@ fn main() {
             continue;
         }
 
-        let command = parts[0];
+        let command = &parts[0];
         let args = &parts[1..];
 
         match registry.run(command, args) {

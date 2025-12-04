@@ -23,7 +23,7 @@ impl CommandRegistry {
         self.map.get(name)
     }
 
-    pub fn run(&self, command_name: &str, args: &[&str]) -> Result<ShellStatus, String> {
+    pub fn run(&self, command_name: &str, args: &[String]) -> Result<ShellStatus, String> {
         if let Some(command) = self.get_command(command_name) {
             command.execute(args, self)
         } else {
@@ -31,7 +31,7 @@ impl CommandRegistry {
         }
     }
 
-    pub fn run_external(&self, command_name: &str, args: &[&str]) -> Result<ShellStatus, String> {
+    pub fn run_external(&self, command_name: &str, args: &[String]) -> Result<ShellStatus, String> {
         if let Some(_) = self.get_executable_path(command_name) {
             let status = std::process::Command::new(command_name)
                 .args(args)

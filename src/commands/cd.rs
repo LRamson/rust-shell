@@ -6,7 +6,7 @@ pub struct CdCommand;
 
 
 impl Command for CdCommand {
-    fn execute(&self, args: &[&str], _: &CommandRegistry) -> Result<ShellStatus, String> {
+    fn execute(&self, args: &[String], _: &CommandRegistry) -> Result<ShellStatus, String> {
         if args.is_empty() {
              return Ok(ShellStatus::Continue);
         }
@@ -19,7 +19,7 @@ impl Command for CdCommand {
             return Ok(ShellStatus::Continue);
         }
 
-        let new_dir = args[0];
+        let new_dir = &args[0];
         let root = Path::new(new_dir);
 
         if let Err(_) = env::set_current_dir(&root) {

@@ -3,7 +3,7 @@ use super::{{Command, ShellStatus, CommandRegistry}};
 pub struct EchoCommand;
 
 impl Command for EchoCommand {
-    fn execute(&self, args: &[&str], _: &CommandRegistry) -> Result<ShellStatus, String> {
+    fn execute(&self, args: &[String], _: &CommandRegistry) -> Result<ShellStatus, String> {
         println!("{}", args.join(" "));
         Ok(ShellStatus::Continue)
     }
