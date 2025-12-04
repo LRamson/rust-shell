@@ -3,6 +3,7 @@ mod exit;
 mod type_cmd;
 mod registry;
 mod pwd;
+mod cd;
 
 pub use registry::CommandRegistry;
 

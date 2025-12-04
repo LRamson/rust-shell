@@ -1,5 +1,5 @@
 use super::{Command, ShellStatus}; 
-use super::{echo::EchoCommand, exit::ExitCommand, type_cmd::TypeCommand, pwd::PwdCommand};
+use super::{echo::EchoCommand, exit::ExitCommand, type_cmd::TypeCommand, pwd::PwdCommand, cd::CdCommand};
 use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
 use std::{env, fs};
@@ -72,6 +72,7 @@ impl Default for CommandRegistry {
         registry.register(Box::new(EchoCommand));
         registry.register(Box::new(ExitCommand));
         registry.register(Box::new(PwdCommand));
+        registry.register(Box::new(CdCommand));
         registry
     }
 }
