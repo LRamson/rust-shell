@@ -10,6 +10,7 @@ pub fn parse_input(input: &str) -> Vec<String> {
             '\\' => {
                 if !in_double_quotes && !in_quotes {
                     escape_next = true;
+                    current_arg.push(" ");
                 } else {
                     current_arg.push(c);
                 }
