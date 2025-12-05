@@ -41,6 +41,7 @@ pub fn parse_input(input: &str) -> Vec<String> {
             },
             _ => {
                 current_arg.push(c);
+                escape_next = false;
             }
         }
     }
