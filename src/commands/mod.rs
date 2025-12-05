@@ -15,7 +15,8 @@ pub enum ShellStatus {
 }
 
 pub trait Command {
-    fn execute(&self, args: &[String], registry: &CommandRegistry, output: &mut dyn Write) -> Result<ShellStatus, String>;
+    fn execute(&self, args: &[String], registry: &CommandRegistry,
+         output: &mut dyn Write) -> Result<ShellStatus, String>;
     fn get_name(&self) -> &str;
     fn get_type(&self) -> &str {
         "shell builtin"

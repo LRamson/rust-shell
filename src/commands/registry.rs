@@ -29,14 +29,15 @@ impl CommandRegistry {
 
     pub fn run(&self, parsed: &ParsedCommand) -> Result<ShellStatus, String> {
         if let Some(cmd) = self.get_command(&parsed.command) {
-            self.run_builtin(cmd, &parsed.args, &parsed.stdout_redirect)
+            self.run_builtin(cmd, &parsed.args, &parsed.stdout_redirect, &parsed.stderr_redirect)
         } else {
-            self.run_external(&parsed.command, &parsed.args, &parsed.stdout_redirect)
+            self.run_external(&parsed.command, &parsed.args, &parsed.stdout_redirect, &parsed.stderr_redirect)
         }
     }
 
-    fn run_builtin(&self, cmd: &Box<dyn Command>, args: &[String], output_path: &Option<String>) -> Result<ShellStatus, String> {
-        let mut writer: Box<dyn Write> = match output_path {
+    fn run_builtin(&self, cmd: &Box<dyn Command>, args: &[String],
+         output_path: &Option<String>, err_path: &Option<String>) -> Result<ShellStatus, String> {
+        let mut writer_output: Box<dyn Write> = match output_path {
             Some(path) => {
                 let file = File::create(path).map_err(|e| format!("Failed to open {}: {}", path, e))?;
                 Box::new(file)
@@ -46,12 +47,37 @@ impl CommandRegistry {
             }
         };
 
-        cmd.execute(args, self, &mut *writer)
+        let mut writer_err: Box<dyn Write> = match err_path {
+            Some(path) => {
+                let file = File::create(path).map_err(|e| format!("Failed to open {}: {}", path, e))?;
+                Box::new(file)
+            }
+            None => {
+                Box::new(io::stderr())
+            }
+        };
+
+        match cmd.execute(args, self, &mut *writer_output) {
+            Ok(status) => Ok(status),
+            Err(e) => {
+                writeln!(writer_err, "{}", e).map_err(|e| e.to_string())?;
+                Ok(ShellStatus::Continue)
+            }
+        }
     }
 
-    pub fn run_external(&self, command_name: &str, args: &[String], output_path: &Option<String>) -> Result<ShellStatus, String> {
+    pub fn run_external(&self, command_name: &str, args: &[String], 
+         output_path: &Option<String>, err_path: &Option<String>) -> Result<ShellStatus, String> {
         if let Some(_) = self.get_executable_path(command_name) {
             let stdout_dest = match output_path {
+                Some(path) => {
+                    let file = File::create(path).map_err(|e| format!("Failed to open {}: {}", path, e))?;
+                    Stdio::from(file) 
+                }
+                None => Stdio::inherit(), 
+            };
+
+            let err_dest = match err_path {
                 Some(path) => {
                     let file = File::create(path).map_err(|e| format!("Failed to open {}: {}", path, e))?;
                     Stdio::from(file) 
@@ -62,6 +88,7 @@ impl CommandRegistry {
             let _ = std::process::Command::new(command_name)
                 .args(args)
                 .stdout(stdout_dest)
+                .stderr(err_dest)
                 .status()
                 .map_err(|e| format!("Failed to execute {}: {}", command_name, e))?;
             

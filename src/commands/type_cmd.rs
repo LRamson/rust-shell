@@ -6,9 +6,10 @@ use super::CommandRegistry;
 pub struct TypeCommand;
 
 impl Command for TypeCommand {
-    fn execute(&self, args: &[String], registry: &CommandRegistry, output: &mut dyn Write) -> Result<ShellStatus, String> {
+    fn execute(&self, args: &[String], registry: &CommandRegistry,
+         output: &mut dyn Write) -> Result<ShellStatus, String> {
         if args.is_empty()  {
-            return Err("type: missing argument".to_string());
+            return Ok(ShellStatus::Continue);
         }
 
         for arg in args {
@@ -17,7 +18,7 @@ impl Command for TypeCommand {
             } else if let Some(executable_path) = registry.get_executable_path(&arg) {
                 writeln!(output, "{} is {}", arg, executable_path).map_err(|e| e.to_string())?;
             } else {
-                writeln!(output, "{}: not found", arg).map_err(|e| e.to_string())?;
+                return Err(format!("{}: not found", arg))?;
             }
         }
 

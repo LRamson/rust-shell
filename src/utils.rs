@@ -5,6 +5,7 @@ pub struct ParsedCommand {
     pub command: String,
     pub args: Vec<String>,
     pub stdout_redirect: Option<String>,
+    pub stderr_redirect: Option<String>,
 }
 
 
@@ -18,6 +19,7 @@ pub fn parse_command_line(input: &str) -> Option<ParsedCommand> {
     let command = tokens[0].clone();
     let mut args = Vec::new();
     let mut stdout_redirect = None;
+    let mut stderr_redirect = None;
 
     let mut iter = tokens.iter().skip(1).peekable();
 
@@ -28,6 +30,13 @@ pub fn parse_command_line(input: &str) -> Option<ParsedCommand> {
             } else {
                 eprintln!("Syntax error: expected file path after redirect");
             }
+        } else if token == "2>" {
+            if let Some(_path) = iter.next() {
+                stderr_redirect = Some(_path.clone());
+            } else {
+                eprintln!("Syntax error: expected file path after redirect");
+            }
+
         } else {
             args.push(token.clone());
         }
@@ -37,6 +46,7 @@ pub fn parse_command_line(input: &str) -> Option<ParsedCommand> {
         command,
         args,
         stdout_redirect,
+        stderr_redirect,
     })
 }
 
