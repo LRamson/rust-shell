@@ -33,6 +33,7 @@ pub fn parse_input(input: &str) -> Vec<String> {
             c if c.is_whitespace()=> {
                 if in_quotes || in_double_quotes || escape_next {
                     current_arg.push(c);
+                    escape_next = false;
                 } else if !current_arg.is_empty() {
                     args.push(current_arg);
                     current_arg = String::new();
