@@ -1,14 +1,20 @@
+const SPECIAL_CHARS: &[&'static str] = &["\"", "\\"];
+
 pub fn parse_input(input: &str) -> Vec<String> {
+    let mut chars = input.chars().peekable();
+
     let mut args: Vec<String> = Vec::new();
     let mut current_arg: String = String::new();
+
     let mut in_quotes:bool = false;
     let mut in_double_quotes: bool = false;
     let mut escape_next: bool = false;
 
-    for c in input.chars() {
+    while let Some(c) = chars.next() {
         match c {
             '\\' => {
-                if !in_double_quotes && !in_quotes {
+                if (!in_double_quotes && !in_quotes && !escape_next) || 
+                chars.peek().map_or(false, |next_c| SPECIAL_CHARS.contains(&next_c.to_string().as_str())) {
                     escape_next = true;
                 } else {
                     current_arg.push(c);
