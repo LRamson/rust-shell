@@ -29,11 +29,9 @@ pub fn parse_command_line(input: &str) -> Option<ParsedCommand> {
 
     let mut iter = tokens.iter().skip(1).peekable();
 
-    println!("Tokens: {:?}", tokens);
     while let Some(token) = iter.next() {
         match token.as_str() {
             ">>" | "1>>" => {
-                println!("Found append stdout redirect");
                 if let Some(path) = iter.next() {
                     stdout_redirect = Some(path.clone());
                     stdout_redirect_append = true;
@@ -68,15 +66,6 @@ pub fn parse_command_line(input: &str) -> Option<ParsedCommand> {
             }
         }
     }
-
-    println!("Parsed: {:?}", ParsedCommand {
-        command: command.clone(),
-        args: args.clone(),
-        stdout_redirect: stdout_redirect.clone(),
-        stderr_redirect: stderr_redirect.clone(),
-        stdout_redirect_append,
-        stderr_redirect_append,
-    });
 
     Some(ParsedCommand {
         command,
