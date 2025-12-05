@@ -6,6 +6,9 @@ pub struct ParsedCommand {
     pub args: Vec<String>,
     pub stdout_redirect: Option<String>,
     pub stderr_redirect: Option<String>,
+
+    pub stdout_redirect_append: bool,
+    pub stderr_redirect_append: bool,
 }
 
 
@@ -21,32 +24,67 @@ pub fn parse_command_line(input: &str) -> Option<ParsedCommand> {
     let mut stdout_redirect = None;
     let mut stderr_redirect = None;
 
+    let mut stdout_redirect_append = false;
+    let mut stderr_redirect_append = false;
+
     let mut iter = tokens.iter().skip(1).peekable();
 
+    println!("Tokens: {:?}", tokens);
     while let Some(token) = iter.next() {
-        if token == ">" || token == "1>" {
-            if let Some(path) = iter.next() {
-                stdout_redirect = Some(path.clone());
-            } else {
-                eprintln!("Syntax error: expected file path after redirect");
+        match token.as_str() {
+            ">>" | "1>>" => {
+                println!("Found append stdout redirect");
+                if let Some(path) = iter.next() {
+                    stdout_redirect = Some(path.clone());
+                    stdout_redirect_append = true;
+                } else {
+                    eprintln!("Syntax error: expected file path after redirect");
+                }
             }
-        } else if token == "2>" {
-            if let Some(_path) = iter.next() {
-                stderr_redirect = Some(_path.clone());
-            } else {
-                eprintln!("Syntax error: expected file path after redirect");
+            "2>>" => {
+                if let Some(path) = iter.next() {
+                    stderr_redirect = Some(path.clone());
+                    stderr_redirect_append = true;
+                } else {
+                    eprintln!("Syntax error: expected file path after redirect");
+                }
             }
-
-        } else {
-            args.push(token.clone());
+            ">" | "1>" => {
+                if let Some(path) = iter.next() {
+                    stdout_redirect = Some(path.clone());
+                } else {
+                    eprintln!("Syntax error: expected file path after redirect");
+                }
+            }
+            "2>" => {
+                if let Some(path) = iter.next() {
+                    stderr_redirect = Some(path.clone());
+                } else {
+                    eprintln!("Syntax error: expected file path after redirect");
+                }
+            }
+            _ => {
+                args.push(token.clone());
+            }
         }
     }
+
+    println!("Parsed: {:?}", ParsedCommand {
+        command: command.clone(),
+        args: args.clone(),
+        stdout_redirect: stdout_redirect.clone(),
+        stderr_redirect: stderr_redirect.clone(),
+        stdout_redirect_append,
+        stderr_redirect_append,
+    });
 
     Some(ParsedCommand {
         command,
         args,
         stdout_redirect,
         stderr_redirect,
+        stdout_redirect_append,
+        stderr_redirect_append,
     })
 }
 
