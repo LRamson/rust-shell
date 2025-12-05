@@ -14,21 +14,15 @@ fn main() {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
 
-        let parts = utils::parse_input(&input);
-        
-        if parts.is_empty() {
-            continue;
-        }
+        let parsed_cmd = match utils::parse_command_line(&input) {
+            Some(cmd) => cmd,
+            None => continue, 
+        };
 
-        let command = &parts[0];
-        let args = &parts[1..];
-
-        match registry.run(command, args) {
+        match registry.run(&parsed_cmd) {
             Ok(ShellStatus::Exit) => break,
             Ok(ShellStatus::Continue) => continue,
-            Err(e) => {
-                println!("{}", e); 
-            }
+            Err(e) => eprintln!("{}", e), 
         }
     }
 }

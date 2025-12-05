@@ -1,3 +1,5 @@
+use std::io::Write;
+
 mod echo;
 mod exit;
 mod type_cmd;
@@ -13,7 +15,7 @@ pub enum ShellStatus {
 }
 
 pub trait Command {
-    fn execute(&self, args: &[String], registry: &CommandRegistry) -> Result<ShellStatus, String>;
+    fn execute(&self, args: &[String], registry: &CommandRegistry, output: &mut dyn Write) -> Result<ShellStatus, String>;
     fn get_name(&self) -> &str;
     fn get_type(&self) -> &str {
         "shell builtin"

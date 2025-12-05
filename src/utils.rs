@@ -1,6 +1,47 @@
 const SPECIAL_CHARS: &[&'static str] = &["\"", "\\"];
 
-pub fn parse_input(input: &str) -> Vec<String> {
+#[derive(Debug)]
+pub struct ParsedCommand {
+    pub command: String,
+    pub args: Vec<String>,
+    pub stdout_redirect: Option<String>,
+}
+
+
+pub fn parse_command_line(input: &str) -> Option<ParsedCommand> {
+    let tokens = tokenize_input(input); 
+    
+    if tokens.is_empty() {
+        return None;
+    }
+
+    let command = tokens[0].clone();
+    let mut args = Vec::new();
+    let mut stdout_redirect = None;
+
+    let mut iter = tokens.iter().skip(1).peekable();
+
+    while let Some(token) = iter.next() {
+        if token == ">" || token == "1>" {
+            if let Some(path) = iter.next() {
+                stdout_redirect = Some(path.clone());
+            } else {
+                eprintln!("Syntax error: expected file path after redirect");
+            }
+        } else {
+            args.push(token.clone());
+        }
+    }
+
+    Some(ParsedCommand {
+        command,
+        args,
+        stdout_redirect,
+    })
+}
+
+
+pub fn tokenize_input(input: &str) -> Vec<String> {
     let mut chars = input.chars().peekable();
 
     let mut args: Vec<String> = Vec::new();

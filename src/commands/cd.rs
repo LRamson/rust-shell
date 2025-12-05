@@ -1,12 +1,13 @@
 use super::{Command, ShellStatus, CommandRegistry};
 use std::env;
+use std::io::Write;
 use std::path::Path;
 
 pub struct CdCommand;
 
 
 impl Command for CdCommand {
-    fn execute(&self, args: &[String], _: &CommandRegistry) -> Result<ShellStatus, String> {
+    fn execute(&self, args: &[String], _: &CommandRegistry, _: &mut dyn Write) -> Result<ShellStatus, String> {
         if args.is_empty() {
              return Ok(ShellStatus::Continue);
         }

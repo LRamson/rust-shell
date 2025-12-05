@@ -1,8 +1,12 @@
 use super::{Command, ShellStatus}; 
 use super::{echo::EchoCommand, exit::ExitCommand, type_cmd::TypeCommand, pwd::PwdCommand, cd::CdCommand};
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::{self, Write};
 use std::os::unix::fs::PermissionsExt;
+use std::process::Stdio;
 use std::{env, fs};
+use crate::utils::ParsedCommand;
 
 pub struct CommandRegistry {
     map: HashMap<String, Box<dyn Command>>,
@@ -23,18 +27,42 @@ impl CommandRegistry {
         self.map.get(name)
     }
 
-    pub fn run(&self, command_name: &str, args: &[String]) -> Result<ShellStatus, String> {
-        if let Some(command) = self.get_command(command_name) {
-            command.execute(args, self)
+    pub fn run(&self, parsed: &ParsedCommand) -> Result<ShellStatus, String> {
+        if let Some(cmd) = self.get_command(&parsed.command) {
+            self.run_builtin(cmd, &parsed.args, &parsed.stdout_redirect)
         } else {
-            self.run_external(command_name, args)
+            self.run_external(&parsed.command, &parsed.args, &parsed.stdout_redirect)
         }
     }
 
-    pub fn run_external(&self, command_name: &str, args: &[String]) -> Result<ShellStatus, String> {
+    fn run_builtin(&self, cmd: &Box<dyn Command>, args: &[String], output_path: &Option<String>) -> Result<ShellStatus, String> {
+        let mut writer: Box<dyn Write> = match output_path {
+            Some(path) => {
+                let file = File::create(path).map_err(|e| format!("Failed to open {}: {}", path, e))?;
+                Box::new(file)
+            }
+            None => {
+                Box::new(io::stdout())
+            }
+        };
+
+        cmd.execute(args, self, &mut *writer)
+    }
+
+    pub fn run_external(&self, command_name: &str, args: &[String], output_path: &Option<String>) -> Result<ShellStatus, String> {
         if let Some(_) = self.get_executable_path(command_name) {
+            let stdout_dest = match output_path {
+                Some(path) => {
+                    let file = File::create(path).map_err(|e| format!("Failed to open {}: {}", path, e))?;
+                    Stdio::from(file) 
+                }
+                None => Stdio::inherit(), 
+            };
+
             let status = std::process::Command::new(command_name)
                 .args(args)
+                .stdout(stdout_dest)
+                .stderr(Stdio::inherit())
                 .status()
                 .map_err(|e| format!("Failed to execute {}: {}", command_name, e))?;
             
