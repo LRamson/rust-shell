@@ -14,7 +14,7 @@ pub fn parse_input(input: &str) -> Vec<String> {
         match c {
             '\\' => {
                 if (!in_double_quotes && !in_quotes && !escape_next) || 
-                (chars.peek().map_or(false, |next_c| SPECIAL_CHARS.contains(&next_c.to_string().as_str())) && !escape_next) {
+                (chars.peek().map_or(false, |next_c| SPECIAL_CHARS.contains(&next_c.to_string().as_str())) && !escape_next && in_double_quotes){
                     escape_next = true;
                 } else {
                     current_arg.push(c);
