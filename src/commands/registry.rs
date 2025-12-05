@@ -74,23 +74,9 @@ impl CommandRegistry {
     pub fn run_external(&self, command_name: &str, args: &[String], 
          output_path: &Option<String>, err_path: &Option<String>, append: bool, append_err: bool) -> Result<ShellStatus, String> {
         if let Some(_) = self.get_executable_path(command_name) {
-            let stdout_dest = match output_path {
-                Some(path) => {
-                    let file = self.get_output_file(path, append)
-                        .map_err(|e| format!("Failed to open {}: {}", path, e))?;
-                    Stdio::from(file) 
-                }
-                None => Stdio::inherit(), 
-            };
+            let stdout_dest = self.get_output_stdio(output_path.as_deref(), append);
 
-            let err_dest = match err_path {
-                Some(path) => {
-                    let file = self.get_output_file(path, append_err)
-                        .map_err(|e| format!("Failed to open {}: {}", path, e))?;
-                    Stdio::from(file) 
-                }
-                None => Stdio::inherit(), 
-            };
+            let err_dest = self.get_output_stdio(err_path.as_deref(), append_err);
 
             let _ = std::process::Command::new(command_name)
                 .args(args)
@@ -121,8 +107,21 @@ impl CommandRegistry {
         return None;
     }
 
-    pub fn get_output_file(&self, path: &str, append: bool) -> io::Result<File> {
-        println!("{}", append);
+    fn get_output_stdio(&self, path: Option<&str>, append: bool) -> Stdio {
+        match path {
+                Some(path) => {
+                    let file = self.get_output_file(path, append)
+                        .map_err(|e| format!("Failed to open {}: {}", path, e));
+                    match file {
+                        Ok(f) => Stdio::from(f),
+                        Err(_) => Stdio::inherit(),
+                    }
+                }
+                None => Stdio::inherit(), 
+            }
+    }
+
+    fn get_output_file(&self, path: &str, append: bool) -> io::Result<File> {
         OpenOptions::new()
             .create(true) 
             .write(true)  
