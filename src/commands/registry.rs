@@ -59,18 +59,13 @@ impl CommandRegistry {
                 None => Stdio::inherit(), 
             };
 
-            let status = std::process::Command::new(command_name)
+            let _ = std::process::Command::new(command_name)
                 .args(args)
                 .stdout(stdout_dest)
-                .stderr(Stdio::inherit())
                 .status()
                 .map_err(|e| format!("Failed to execute {}: {}", command_name, e))?;
             
-            if status.success() {
-                Ok(ShellStatus::Continue)
-            } else {
-                Err(format!("{} exited with status {}", command_name, status))
-            }
+            Ok(ShellStatus::Continue)
         }
         else {
             Err(format!("{}: command not found", command_name))
