@@ -31,7 +31,7 @@ impl Completer for ShellHelper {
 
         for command in &self.commands {
             if command.starts_with(line) {
-                candidates.push(format!("{} ", command));
+                candidates.push(format!("{}", command));
             }
         }
 
