@@ -30,9 +30,13 @@ impl CommandRegistry {
     }
     
     pub fn get_command_names(&self) -> Vec<String> {
-        let builtins: Vec<String> = self.builtins.keys().cloned().collect();
-        let executables: Vec<String> = self.executables.keys().cloned().collect();
-        [builtins, executables].concat()
+        let mut names: Vec<String> = self.builtins.keys().cloned().collect();
+        names.extend(self.executables.keys().cloned());
+        
+        names.sort();
+        names.dedup();
+        
+        names
     }
     
     pub fn run(&self, parsed: &ParsedCommand) -> Result<ShellStatus, String> {
