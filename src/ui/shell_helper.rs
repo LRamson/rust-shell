@@ -1,4 +1,4 @@
-use rustyline::completion::Completer;
+use rustyline::completion::{Candidate, Completer};
 use rustyline::hint::Hinter;
 use rustyline::highlight::Highlighter;
 use rustyline::validate::Validator;
@@ -14,16 +14,32 @@ impl ShellHelper {
     }
 }
 
+#[derive(Clone)]
+pub struct CustomCandidate {
+    display: String,
+    replacement: String,
+}
+
+impl Candidate for CustomCandidate {
+    fn display(&self) -> &str {
+        &self.display
+    }
+
+    fn replacement(&self) -> &str {
+        &self.replacement
+    }
+}
+
 impl Completer for ShellHelper {
-    type Candidate = String;
+    type Candidate = CustomCandidate;
 
     fn complete(
         &self,
         line: &str,
         _pos: usize,
         _ctx: &Context,
-    ) -> Result<(usize, Vec<String>)> {
-        let mut candidates = Vec::new();
+    ) -> Result<(usize, Vec<CustomCandidate>)> {
+        let mut candidates: Vec<CustomCandidate> = Vec::new();
 
         if line.is_empty() {
              return Ok((0, candidates));
@@ -31,7 +47,10 @@ impl Completer for ShellHelper {
 
         for command in &self.commands {
             if command.starts_with(line) {
-                candidates.push(format!("{}", command));
+                candidates.push(CustomCandidate {
+                    display: command.clone(),
+                    replacement: format!("{} ", command)
+                });
             }
         }
 
