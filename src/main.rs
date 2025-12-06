@@ -4,16 +4,20 @@ mod ui;
 
 use commands::{CommandRegistry, ShellStatus};
 use ui::ShellHelper;
-use rustyline::{Editor, error::ReadlineError};
+use rustyline::{CompletionType, Config, EditMode, Editor, error::ReadlineError};
 
 fn main() {
     let registry = CommandRegistry::default();
-
     let command_names = registry.get_command_names();
-
     let helper = ShellHelper::new(command_names);
 
-    let mut editor = Editor::<ShellHelper, _>::new().unwrap();
+    let config = Config::builder()
+        .completion_type(CompletionType::List)
+        .edit_mode(EditMode::Emacs) 
+        .build();
+
+    let mut editor = 
+        Editor::<ShellHelper, _>::with_config(config).unwrap();
     editor.set_helper(Some(helper));
 
     loop {
