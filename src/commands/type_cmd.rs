@@ -13,7 +13,7 @@ impl Command for TypeCommand {
         }
 
         for arg in args {
-            if let Some(command) = registry.get_command(&arg) {
+            if let Some(command) = registry.get_builtin(&arg) {
                 writeln!(output, "{} is a {}", arg, command.get_type()).map_err(|e| e.to_string())?;
             } else if let Some(executable_path) = registry.get_executable_path(&arg) {
                 writeln!(output, "{} is {}", arg, executable_path).map_err(|e| e.to_string())?;
