@@ -2,10 +2,9 @@ mod commands;
 mod utils;    
 mod ui;
 
-use std::io::{self, Write};
 use commands::{CommandRegistry, ShellStatus};
 use ui::ShellHelper;
-use rustyline::Editor;
+use rustyline::{Editor, error::ReadlineError};
 
 fn main() {
     let registry = CommandRegistry::default();
@@ -19,7 +18,6 @@ fn main() {
 
     loop {
         let readline = editor.readline("$ ");
-
         match readline {
             Ok(line) => {
                 editor.add_history_entry(line.as_str()).ok();
@@ -34,15 +32,18 @@ fn main() {
                     Err(e) => eprintln!("{}", e), 
                 }
             }
-            Err(_) => {
+            Err(ReadlineError::Interrupted) => {
+                println!("^C");
+                continue;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("exit");
+                break;
+            }
+            Err(err) => {
+                eprintln!("Error: {:?}", err);
                 break;
             }
         }
-        print!("$ ");
-        io::stdout().flush().unwrap();
-
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
-
     }
 }
