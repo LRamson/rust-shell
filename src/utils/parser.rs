@@ -4,6 +4,7 @@ const SPECIAL_CHARS: &[&'static str] = &["\"", "\\"];
 pub struct ParsedCommand {
     pub command: String,
     pub args: Vec<String>,
+
     pub stdout_redirect: Option<String>,
     pub stderr_redirect: Option<String>,
 
@@ -11,14 +12,25 @@ pub struct ParsedCommand {
     pub stderr_redirect_append: bool,
 }
 
+pub fn parse_input(input: &str) -> Vec<ParsedCommand> {
+    let tokens = tokenize_input(input);
+    let mut commands: Vec<ParsedCommand> = Vec::new();
 
-pub fn parse_command_line(input: &str) -> Option<ParsedCommand> {
-    let tokens = tokenize_input(input); 
-    
-    if tokens.is_empty() {
-        return None;
+    for token in tokens.split(|t| t == "|") {
+        if token.is_empty() {
+            continue;
+        }
+
+        if let Some(parsed_command) = parse_command_line(token.to_vec()) {
+            commands.push(parsed_command);
+        }
     }
 
+    commands
+}
+
+
+pub fn parse_command_line(tokens: Vec<String>) -> Option<ParsedCommand> {
     let command = tokens[0].clone();
     let mut args = Vec::new();
     let mut stdout_redirect = None;
@@ -92,7 +104,8 @@ pub fn tokenize_input(input: &str) -> Vec<String> {
         match c {
             '\\' => {
                 if (!in_double_quotes && !in_quotes && !escape_next) || 
-                (chars.peek().map_or(false, |next_c| SPECIAL_CHARS.contains(&next_c.to_string().as_str())) && !escape_next && in_double_quotes){
+                    (chars.peek().map_or(false, |next_c| SPECIAL_CHARS.contains(&next_c.to_string().as_str())) 
+                    && !escape_next && in_double_quotes){
                     escape_next = true;
                 } else {
                     current_arg.push(c);
@@ -113,6 +126,18 @@ pub fn tokenize_input(input: &str) -> Vec<String> {
                 } else {
                     current_arg.push(c);
                     escape_next = false;
+                }
+            },
+            '|' => {
+                if in_quotes || in_double_quotes || escape_next {
+                    current_arg.push(c);
+                    escape_next = false;
+                } else {
+                    if !current_arg.is_empty() {
+                        args.push(current_arg);
+                        current_arg = String::new();
+                    }
+                    args.push("|".to_string());
                 }
             },
             c if c.is_whitespace()=> {
