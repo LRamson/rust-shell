@@ -27,6 +27,10 @@ impl CommandRegistry {
         self.map.get(name)
     }
 
+    pub fn get_command_names(&self) -> Vec<String> {
+        self.map.keys().cloned().collect()
+    }
+
     pub fn run(&self, parsed: &ParsedCommand) -> Result<ShellStatus, String> {
         if let Some(cmd) = self.get_command(&parsed.command) {
             self.run_builtin(cmd, &parsed.args,

@@ -127,6 +127,10 @@ pub fn tokenize_input(input: &str) -> Vec<String> {
             _ => {
                 current_arg.push(c);
                 escape_next = false;
+                if chars.peek().is_none() {
+                    args.push(current_arg);
+                    break;
+                }
             }
         }
     }
