@@ -1,0 +1,12 @@
+teste
+teste
+Cargo.lock
+Cargo.toml
+codecrafters.yml
+README.md
+src
+t
+target
+teste
+teste.txt
+your_program.sh

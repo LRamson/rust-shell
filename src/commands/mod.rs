@@ -6,8 +6,10 @@ mod type_cmd;
 mod registry;
 mod pwd;
 mod cd;
+mod executor;
 
 pub use registry::CommandRegistry;
+pub use executor::ShellExecutor;
 
 pub enum ShellStatus {
     Continue,

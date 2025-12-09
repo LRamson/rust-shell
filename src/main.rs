@@ -2,7 +2,7 @@ mod commands;
 mod utils;    
 mod ui;
 
-use commands::{CommandRegistry, ShellStatus};
+use commands::{CommandRegistry, ShellStatus, ShellExecutor};
 use ui::ShellHelper;
 use rustyline::{CompletionType, Config, EditMode, Editor, error::ReadlineError};
 
@@ -10,6 +10,7 @@ fn main() {
     let registry = CommandRegistry::default();
     let command_names = registry.get_command_names();
     let helper = ShellHelper::new(command_names);
+    let executor = ShellExecutor::new(&registry);
 
     let config = Config::builder()
         .completion_type(CompletionType::List)
@@ -25,15 +26,16 @@ fn main() {
         match readline {
             Ok(line) => {
                 editor.add_history_entry(line.as_str()).ok();
-                let parsed_cmd = match utils::parse_command_line(&line) {
-                    Some(cmd) => cmd,
-                    None => continue, 
-                };
+                let commands = utils::parse_input(line.as_str());
                 
-                match registry.run(&parsed_cmd) {
+                if commands.is_empty() {
+                    continue;
+                }
+
+                match executor.run(&commands) {
                     Ok(ShellStatus::Exit) => break,
                     Ok(ShellStatus::Continue) => continue,
-                    Err(e) => eprintln!("{}", e), 
+                    Err(e) => eprintln!("{}", e),
                 }
             }
             Err(ReadlineError::Interrupted) => {

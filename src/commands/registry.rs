@@ -1,16 +1,12 @@
-use super::{Command, ShellStatus}; 
+use super::{Command}; 
 use super::{echo::EchoCommand, exit::ExitCommand, type_cmd::TypeCommand, pwd::PwdCommand, cd::CdCommand};
 use std::collections::HashMap;
-use std::fs::{File, OpenOptions};
-use std::io::{self, Write};
 use std::os::unix::fs::PermissionsExt;
-use std::process::Stdio;
 use std::{env, fs};
-use crate::utils::ParsedCommand;
 
 pub struct CommandRegistry {
-    builtins: HashMap<String, Box<dyn Command>>,
-    executables: HashMap<String, String>,
+    pub builtins: HashMap<String, Box<dyn Command>>,
+    pub executables: HashMap<String, String>,
 }
 
 impl CommandRegistry {
@@ -38,51 +34,6 @@ impl CommandRegistry {
         
         names
     }
-    
-    pub fn run(&self, parsed: &ParsedCommand) -> Result<ShellStatus, String> {
-        if let Some(cmd) = self.get_builtin(&parsed.command) {
-            self.run_builtin(cmd, &parsed.args,
-                 &parsed.stdout_redirect, &parsed.stderr_redirect,
-                 parsed.stdout_redirect_append, parsed.stderr_redirect_append)
-        } else {
-            self.run_external(&parsed.command, &parsed.args,
-                &parsed.stdout_redirect, &parsed.stderr_redirect,
-                 parsed.stdout_redirect_append, parsed.stderr_redirect_append)
-        }
-    }
-    
-    fn run_builtin(&self, cmd: &Box<dyn Command>, args: &[String],
-        output_path: &Option<String>, err_path: &Option<String>, append: bool, append_err: bool) -> Result<ShellStatus, String> {
-            let mut writer_output: Box<dyn Write> = match output_path {
-            Some(path) => {
-                let file = self.get_output_file(path, append).map_err(|e| format!("Failed to open {}: {}", path, e))?;
-                Box::new(file)
-            }
-            None => {
-                Box::new(io::stdout())
-            }
-        };
-
-        let mut writer_err: Box<dyn Write> = match err_path {
-            Some(path) => {
-                let file = self.get_output_file(path, append_err)
-                .map_err(|e| format!("Failed to open {}: {}", path, e))?;
-                Box::new(file)
-            }
-            None => {
-                Box::new(io::stderr())
-            }
-        };
-        
-        match cmd.execute(args, self, &mut *writer_output) {
-            Ok(status) => Ok(status),
-            Err(e) => {
-                writeln!(writer_err, "{}", e).map_err(|e| e.to_string())?;
-                Ok(ShellStatus::Continue)
-            }
-        }
-    }
-
 
     fn register_builtin(&mut self, command: Box<dyn Command>) {
         self.builtins.insert(command.get_name().to_string(), command);
@@ -115,27 +66,6 @@ impl CommandRegistry {
     }
     
 
-    pub fn run_external(&self, command_name: &str, args: &[String], 
-        output_path: &Option<String>, err_path: &Option<String>, append: bool, append_err: bool) -> Result<ShellStatus, String> {
-        if let Some(_) = self.get_executable(command_name) {
-            let stdout_dest = self.get_output_stdio(output_path.as_deref(), append);
-
-            let err_dest = self.get_output_stdio(err_path.as_deref(), append_err);
-
-            let _ = std::process::Command::new(command_name)
-                .args(args)
-                .stdout(stdout_dest)
-                .stderr(err_dest)
-                .status()
-                .map_err(|e| format!("Failed to execute {}: {}", command_name, e))?;
-            
-            Ok(ShellStatus::Continue)
-        }
-        else {
-            Err(format!("{}: command not found", command_name))
-        }
-    }
-
     pub fn get_executable_path(&self, command: &str) -> Option<String> {
         let path_var = env::var("PATH").unwrap_or_default();
 
@@ -151,28 +81,6 @@ impl CommandRegistry {
         return None;
     }
 
-    fn get_output_stdio(&self, path: Option<&str>, append: bool) -> Stdio {
-        match path {
-                Some(path) => {
-                    let file = self.get_output_file(path, append)
-                        .map_err(|e| format!("Failed to open {}: {}", path, e));
-                    match file {
-                        Ok(f) => Stdio::from(f),
-                        Err(_) => Stdio::inherit(),
-                    }
-                }
-                None => Stdio::inherit(), 
-            }
-    }
-
-    fn get_output_file(&self, path: &str, append: bool) -> io::Result<File> {
-        OpenOptions::new()
-            .create(true) 
-            .write(true)  
-            .truncate(!append) 
-            .append(append)    
-            .open(path)
-    }
 }
 
 impl Default for CommandRegistry {
