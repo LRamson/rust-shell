@@ -7,6 +7,7 @@ mod registry;
 mod pwd;
 mod cd;
 mod executor;
+mod history;
 
 pub use registry::CommandRegistry;
 pub use executor::ShellExecutor;

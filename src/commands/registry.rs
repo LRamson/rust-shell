@@ -1,5 +1,5 @@
 use super::{Command}; 
-use super::{echo::EchoCommand, exit::ExitCommand, type_cmd::TypeCommand, pwd::PwdCommand, cd::CdCommand};
+use super::{echo::EchoCommand, exit::ExitCommand, type_cmd::TypeCommand, pwd::PwdCommand, cd::CdCommand, history::HistoryCommand};
 use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
 use std::{env, fs};
@@ -91,6 +91,7 @@ impl Default for CommandRegistry {
         registry.register_builtin(Box::new(ExitCommand));
         registry.register_builtin(Box::new(PwdCommand));
         registry.register_builtin(Box::new(CdCommand));
+        registry.register_builtin(Box::new(HistoryCommand));
 
         registry.scan_path_executables();
 
