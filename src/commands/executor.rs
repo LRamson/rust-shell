@@ -1,8 +1,14 @@
 use std::process::{Command as ProcessCommand, Stdio, Child};
 use std::fs::{File, OpenOptions};
-use std::io::{self, Write};
+use std::io::{self, Write}; 
 use super::{CommandRegistry, ShellStatus};
 use crate::utils::ParsedCommand;
+
+enum PipeState {
+    None,
+    Process(Child),  
+    Buffer(Vec<u8>),  
+}
 
 pub struct ShellExecutor<'a> {
     registry: &'a CommandRegistry,
@@ -18,52 +24,120 @@ impl<'a> ShellExecutor<'a> {
             return Ok(ShellStatus::Continue);
         }
 
-        let mut previous_process: Option<Child> = None;
+        let mut previous_output = PipeState::None;
         let mut iter = pipeline.iter().peekable();
 
         while let Some(cmd) = iter.next() {
             let is_last = iter.peek().is_none();
+            
+            let is_builtin = self.registry.get_builtin(&cmd.command).is_some();
 
-            let (stdin, stdout, stderr, is_pipe_output) = self.configure_io(
-                cmd, 
-                &mut previous_process, 
-                is_last
-            )?;
-
-            let (child_process, status) = self.dispatch_command(cmd, stdin, stdout, stderr)?;
+            let (new_state, status) = if is_builtin {
+                self.handle_builtin(cmd, &mut previous_output, is_last)?
+            } else {
+                self.handle_external(cmd, &mut previous_output, is_last)?
+            };
 
             if let ShellStatus::Exit = status {
                 return Ok(ShellStatus::Exit);
             }
 
-            if is_pipe_output {
-                previous_process = child_process;
-            } else {
-                if let Some(mut child) = child_process {
-                    child.wait().map_err(|e| e.to_string())?;
-                }
-                previous_process = None;
-            }
+            previous_output = new_state;
+        }
+
+        if let PipeState::Process(mut child) = previous_output {
+             child.wait().map_err(|e| e.to_string())?;
         }
 
         Ok(ShellStatus::Continue)
     }
 
+    // --- Lógica de Builtins (A Ponte Memória -> Pipe) ---
 
-    fn configure_io(
+    fn handle_builtin(
         &self, 
         cmd: &ParsedCommand, 
-        previous_process: &mut Option<Child>, 
+        _input: &mut PipeState, 
         is_last: bool
-    ) -> Result<(Stdio, Stdio, Stdio, bool), String> {
+    ) -> Result<(PipeState, ShellStatus), String> {
         
-        let stdin = if let Some(mut child) = previous_process.take() {
-            if let Some(out) = child.stdout.take() { Stdio::from(out) } else { Stdio::null() }
+        let builtin = self.registry.get_builtin(&cmd.command).unwrap();
+        
+        // A. Configurar Output
+        // Se for pipe e não é o último, escrevemos num Buffer em memória!
+        // Se for redirect ou último, escrevemos no destino real.
+        let mut output_buffer = Vec::new(); // Buffer temporário
+        let mut writer: Box<dyn Write> = if let Some(path) = &cmd.stdout_redirect {
+             let file = self.open_file(path, cmd.stdout_redirect_append)?;
+             Box::new(file)
+        } else if !is_last {
+             // MAGIA AQUI: O builtin escreve neste vetor, que passaremos ao próximo comando
+             Box::new(&mut output_buffer)
         } else {
-            Stdio::inherit()
+             Box::new(io::stdout())
         };
 
-        let (stdout, is_pipe) = if let Some(path) = &cmd.stdout_redirect {
+        // B. Executar
+        // Builtins ignoram STDIN na maioria dos casos simples, mas idealmente deveriam ler.
+        // Para este desafio, focamos no Output. Se houver erro (stderr), tratamos como antes.
+        let result = builtin.execute(&cmd.args, self.registry, &mut *writer);
+
+        drop(writer); // Garantir que tudo é escrito antes de prosseguir
+
+        // C. Tratamento de Erro (Stderr)
+        match result {
+            Ok(status) => {
+                // Se usámos o buffer (não é o último e não tem redirect), o novo estado é Buffer!
+                if !is_last && cmd.stdout_redirect.is_none() {
+                    Ok((PipeState::Buffer(output_buffer), status))
+                } else {
+                    Ok((PipeState::None, status))
+                }
+            },
+            Err(e) => {
+                // Lógica de redirecionamento de erro (igual ao passo anterior)
+                if let Some(path) = &cmd.stderr_redirect {
+                    let mut file = self.open_file(path, cmd.stderr_redirect_append)?;
+                    writeln!(file, "{}", e).map_err(|e| e.to_string())?;
+                    Ok((PipeState::None, ShellStatus::Continue))
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    // --- Lógica de Externos (A Ponte Pipe/Buffer -> Processo) ---
+
+    fn handle_external(
+        &self,
+        cmd: &ParsedCommand,
+        input: &mut PipeState,
+        is_last: bool
+    ) -> Result<(PipeState, ShellStatus), String> {
+        if self.registry.get_executable(&cmd.command).is_none() {
+            return Err(format!("{}: command not found", cmd.command));
+        }
+        // A. Configurar STDIN (Entrada)
+        // Aqui decidimos de onde o processo lê
+        let stdin = match input {
+            PipeState::Process(child) => {
+                // Se o anterior era processo, roubamos o stdout dele
+                if let Some(out) = child.stdout.take() {
+                    Stdio::from(out)
+                } else {
+                    Stdio::null()
+                }
+            },
+            PipeState::Buffer(_) => {
+                // Se o anterior era Buffer, vamos injetar manualmente (Stdio::piped)
+                Stdio::piped() 
+            },
+            PipeState::None => Stdio::inherit(),
+        };
+
+        // B. Configurar STDOUT (Saída)
+        let (stdout, creates_pipe) = if let Some(path) = &cmd.stdout_redirect {
             let file = self.open_file(path, cmd.stdout_redirect_append)?;
             (Stdio::from(file), false)
         } else if !is_last {
@@ -79,66 +153,32 @@ impl<'a> ShellExecutor<'a> {
             Stdio::inherit()
         };
 
-        Ok((stdin, stdout, stderr, is_pipe))
-    }
-
-
-    fn dispatch_command(
-        &self, 
-        cmd: &ParsedCommand, 
-        stdin: Stdio, 
-        stdout: Stdio, 
-        stderr: Stdio
-    ) -> Result<(Option<Child>, ShellStatus), String> {
-        
-        if let Some(builtin) = self.registry.get_builtin(&cmd.command) {
-            let mut stdout_writer = self.get_builtin_writer(cmd)?;
-            
-            let result = builtin.execute(&cmd.args, self.registry, &mut *stdout_writer);
-
-            match result {
-                Ok(status) => {
-                    return Ok((None, status));
-                }
-                Err(error_msg) => {
-                    if let Some(path) = &cmd.stderr_redirect {
-                        let mut file = self.open_file(path, cmd.stderr_redirect_append)?;
-                        writeln!(file, "{}", error_msg).map_err(|e| e.to_string())?;
-                        
-                        return Ok((None, ShellStatus::Continue));
-                    } else {
-                        return Err(error_msg);
-                    }
-                }
-            }
-        }
-        
-
-        if self.registry.get_executable(&cmd.command).is_some() {
-            let child = self.run_external(&cmd.command, &cmd.args, stdin, stdout, stderr)?;
-            return Ok((Some(child), ShellStatus::Continue));
-        }
-
-        Err(format!("{}: command not found", cmd.command))
-    }
-
-
-    fn run_external(&self, program_name: &str, args: &[String], stdin: Stdio, stdout: Stdio, stderr: Stdio) -> Result<Child, String> {
-        ProcessCommand::new(program_name)
-            .args(args)
+        // C. Spawn (Iniciar Processo)
+        let mut child = ProcessCommand::new(&cmd.command) // Usamos nome simples conforme pedido
+            .args(&cmd.args)
             .stdin(stdin)
             .stdout(stdout)
             .stderr(stderr)
             .spawn()
-            .map_err(|e| format!("Failed to start {}: {}", program_name, e))
-    }
+            .map_err(|e| format!("Failed to start {}: {}", cmd.command, e))?;
 
-    fn get_builtin_writer(&self, cmd: &ParsedCommand) -> Result<Box<dyn Write>, String> {
-        if let Some(path) = &cmd.stdout_redirect {
-            let file = self.open_file(path, cmd.stdout_redirect_append)?;
-            Ok(Box::new(file))
+        // D. INJEÇÃO DE DADOS (Se o input era Buffer)
+        // Se o anterior foi um Builtin (echo), temos de escrever os dados AGORA no stdin do processo novo
+        if let PipeState::Buffer(data) = input {
+            if let Some(mut stdin) = child.stdin.take() {
+                // Escrevemos o buffer todo e o stdin fecha-se automaticamente ao sair do escopo
+                // Isto simula o fluxo de dados "echo | wc"
+                let _ = stdin.write_all(data); 
+            }
+        }
+
+        // E. Retorno
+        if creates_pipe {
+            Ok((PipeState::Process(child), ShellStatus::Continue))
         } else {
-            Ok(Box::new(io::stdout()))
+            // Se não cria pipe (é o último), esperamos acabar
+            child.wait().map_err(|e| e.to_string())?;
+            Ok((PipeState::None, ShellStatus::Continue))
         }
     }
 
