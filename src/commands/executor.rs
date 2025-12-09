@@ -56,7 +56,7 @@ impl<'a> ShellExecutor<'a> {
     fn handle_builtin(
         &self, 
         cmd: &ParsedCommand, 
-        _input: &mut PipeState, 
+        _input: &mut PipeState,
         is_last: bool
     ) -> Result<(PipeState, ShellStatus), String> {
         
@@ -64,13 +64,17 @@ impl<'a> ShellExecutor<'a> {
         
         let mut output_buffer = Vec::new();
         let mut writer: Box<dyn Write> = if let Some(path) = &cmd.stdout_redirect {
-             let file = self.open_file(path, cmd.stdout_redirect_append)?;
-             Box::new(file)
+            let file = self.open_file(path, cmd.stdout_redirect_append)?;
+            Box::new(file)
         } else if !is_last {
-             Box::new(&mut output_buffer)
+            Box::new(&mut output_buffer)
         } else {
-             Box::new(io::stdout())
+            Box::new(io::stdout())
         };
+
+        if let Some(path) = &cmd.stderr_redirect {
+            let _ = self.open_file(path, cmd.stderr_redirect_append)?;
+        }
 
         let result = builtin.execute(&cmd.args, self.registry, &mut *writer);
 
@@ -86,7 +90,7 @@ impl<'a> ShellExecutor<'a> {
             },
             Err(e) => {
                 if let Some(path) = &cmd.stderr_redirect {
-                    let mut file = self.open_file(path, cmd.stderr_redirect_append)?;
+                    let mut file = self.open_file(path, true)?; // Forçamos append aqui para não truncar o que acabámos de criar
                     writeln!(file, "{}", e).map_err(|e| e.to_string())?;
                     Ok((PipeState::None, ShellStatus::Continue))
                 } else {
