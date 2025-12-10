@@ -26,7 +26,7 @@ fn main() {
         match readline {
             Ok(line) => {
                 registry.add_history_entry(&line);
-                editor.add_history_entry(line.as_str()).ok();
+                // editor.add_history_entry(line.as_str()).ok();
 
                 let commands = utils::parse_input(line.as_str());
                 
