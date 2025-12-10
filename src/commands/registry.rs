@@ -1,5 +1,6 @@
 use super::{Command}; 
 use super::{echo::EchoCommand, exit::ExitCommand, type_cmd::TypeCommand, pwd::PwdCommand, cd::CdCommand, history::HistoryCommand};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
 use std::{env, fs};
@@ -7,6 +8,8 @@ use std::{env, fs};
 pub struct CommandRegistry {
     pub builtins: HashMap<String, Box<dyn Command>>,
     pub executables: HashMap<String, String>,
+
+    history: RefCell<Vec<String>>,
 }
 
 impl CommandRegistry {
@@ -14,6 +17,8 @@ impl CommandRegistry {
         CommandRegistry {
             builtins: HashMap::new(),
             executables: HashMap::new(),
+
+            history: RefCell::new(Vec::new()),
         }
     }
     
@@ -42,6 +47,14 @@ impl CommandRegistry {
 
     fn register_executable(&mut self, name: &str, path: &str) {
         self.executables.insert(name.to_string(), path.to_string());
+    }
+
+    pub fn add_history_entry(&self, cmd: &str) {
+        self.history.borrow_mut().push(cmd.to_string());
+    }
+
+    pub fn get_history(&self) -> Vec<String> {
+        self.history.borrow().clone()
     }
 
 

@@ -25,7 +25,9 @@ fn main() {
         let readline = editor.readline("$ ");
         match readline {
             Ok(line) => {
+                registry.add_history_entry(&line);
                 editor.add_history_entry(line.as_str()).ok();
+
                 let commands = utils::parse_input(line.as_str());
                 
                 if commands.is_empty() {
