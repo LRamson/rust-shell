@@ -1,7 +1,6 @@
-[![progress-banner](https://backend.codecrafters.io/progress/shell/985b0efe-4444-4e49-aaff-17dc479ab68b)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
-
 This is a starting point for Rust solutions to the
-["Build Your Own Shell" Challenge](https://app.codecrafters.io/courses/shell/overview).
+
+[&#34;Build Your Own Shell&#34; Challenge](https://app.codecrafters.io/courses/shell/overview).
 
 In this challenge, you'll build your own POSIX compliant shell that's capable of
 interpreting shell commands, running external programs and builtin commands like
@@ -28,8 +27,8 @@ Time to move on to the next stage!
 Note: This section is for stages 2 and beyond.
 
 1. Ensure you have `cargo (1.91)` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
+2. Run `./your_program.sh` to run your program, which is implemented in
    `src/main.rs`. This command compiles your Rust project, so it might be slow
    the first time you run it. Subsequent runs will be fast.
-1. Commit your changes and run `git push origin master` to submit your solution
+3. Commit your changes and run `git push origin master` to submit your solution
    to CodeCrafters. Test output will be streamed to your terminal.
