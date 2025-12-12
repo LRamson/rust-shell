@@ -57,6 +57,13 @@ impl CommandRegistry {
         self.history.borrow().clone()
     }
 
+    pub fn load_history_from_file(&self, path: &str) -> Result<(), String> {
+        let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+        let mut lines: Vec<String> = content.lines().map(|line| line.to_string()).collect();
+        self.history.borrow_mut().append(&mut lines);
+        Ok(())
+    }
+
 
     fn scan_path_executables(&mut self) {
         let path_var = env::var("PATH").unwrap_or_default();

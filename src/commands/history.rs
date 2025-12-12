@@ -1,5 +1,5 @@
 use super::{Command, ShellStatus, CommandRegistry};
-use std::io::Write;
+use std::{io::Write};
 
 pub struct HistoryCommand;
 
@@ -8,8 +8,18 @@ impl Command for HistoryCommand {
         let history = registry.get_history();
         
         let limit = match args.first() {
-            Some(arg) => arg.parse::<usize>()
-                .map_err(|_| format!("history: {}: numeric argument required", arg))?,
+            Some(arg) => {
+                if arg == "-r" {
+                    match args.get(1) {
+                        Some(path_arg) => registry.load_history_from_file(path_arg)?,
+                        None => return Err("history: -r requires a path argument".to_string()),
+                    }
+                    return Ok(ShellStatus::Continue);
+                }
+                
+                arg.parse::<usize>()
+                .map_err(|_| format!("history: {}: numeric argument required", arg))?
+            },
             None => history.len(), 
         };
 
