@@ -2,6 +2,8 @@ mod commands;
 mod utils;    
 mod ui;
 
+use std::env;
+
 use commands::{CommandRegistry, ShellStatus, ShellExecutor};
 use ui::ShellHelper;
 use rustyline::{CompletionType, Config, EditMode, Editor, error::ReadlineError};
@@ -11,6 +13,11 @@ fn main() {
     let command_names = registry.get_command_names();
     let helper = ShellHelper::new(command_names);
     let executor = ShellExecutor::new(&registry);
+
+    let path_hist = env::var("HISTFILE").unwrap_or_default();
+    if path_hist != "" {
+        let _ = registry.load_history_from_file(&path_hist);
+    }
 
     let config = Config::builder()
         .completion_type(CompletionType::List)
