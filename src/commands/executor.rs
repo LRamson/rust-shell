@@ -1,3 +1,4 @@
+use std::os::unix::process::CommandExt;
 use std::process::{Command as ProcessCommand, Stdio, Child};
 use std::fs::{File, OpenOptions};
 use std::io::{self, Write}; 
@@ -107,9 +108,11 @@ impl<'a> ShellExecutor<'a> {
         input: &mut PipeState,
         is_last: bool
     ) -> Result<(PipeState, ShellStatus), String> {
-        if self.registry.get_executable(&cmd.command).is_none() {
-            return Err(format!("{}: command not found", cmd.command));
-        }
+        
+        let full_path = match self.registry.get_executable_path(&cmd.command) {
+            Some(p) => p,
+            None => return Err(format!("{}: command not found", cmd.command)),
+        };
         
         let stdin = match input {
             PipeState::Process(child) => {
@@ -141,16 +144,16 @@ impl<'a> ShellExecutor<'a> {
             Stdio::inherit()
         };
 
-        let path = match self.registry.get_executable_path(&cmd.command) {
-            Some(p) => p,
-            None => return Err(format!("{}: command not found", cmd.command)),
-        };
-
-        let mut child = ProcessCommand::new(&path) // Usamos nome simples conforme pedido
+        let mut command_builder = ProcessCommand::new(&full_path);
+        
+        command_builder
+            .arg0(&cmd.command) 
             .args(&cmd.args)
             .stdin(stdin)
             .stdout(stdout)
-            .stderr(stderr)
+            .stderr(stderr);
+
+        let mut child = command_builder
             .spawn()
             .map_err(|e| format!("Failed to start {}: {}", cmd.command, e))?;
 

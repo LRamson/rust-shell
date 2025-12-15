@@ -26,9 +26,9 @@ impl CommandRegistry {
         self.builtins.get(name)
     }
 
-    pub fn get_executable(&self, name: &str) -> Option<&String> {
-        self.executables.get(name)
-    }
+    // pub fn get_executable(&self, name: &str) -> Option<&String> {
+    //     self.executables.get(name)
+    // }
     
     pub fn get_command_names(&self) -> Vec<String> {
         let mut names: Vec<String> = self.builtins.keys().cloned().collect();
