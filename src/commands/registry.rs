@@ -1,5 +1,6 @@
 use super::{Command}; 
 use super::{echo::EchoCommand, exit::ExitCommand, type_cmd::TypeCommand, pwd::PwdCommand, cd::CdCommand, history::HistoryCommand};
+use std::io::Write;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
@@ -67,10 +68,25 @@ impl CommandRegistry {
 
     pub fn write_history_to_file(&self, path: &str, append: bool) -> Result<(), String> {
         let mut file = open_file(path, append)?;
-        for entry in self.history.borrow().iter() {
-            use std::io::Write;
+        let history = self.history.borrow();
+
+        let start_index = if append {
+            let found_index = history.iter()
+                .rev()
+                .skip(1) 
+                .position(|x| x.starts_with("history -a")); 
+
+            match found_index {
+                Some(rev_index) => history.len() - 1 - rev_index,
+                None => 0, 
+            }
+        } else {
+            0
+        };
+        for entry in history.iter().skip(start_index) {
             writeln!(file, "{}", entry).map_err(|e| e.to_string())?;
         }
+
         Ok(())
     }
 
