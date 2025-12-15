@@ -64,6 +64,15 @@ impl CommandRegistry {
         Ok(())
     }
 
+    pub fn write_history_to_file(&self, path: &str) -> Result<(), String> {
+        let mut file = fs::File::create(path).map_err(|e| e.to_string())?;
+        for entry in self.history.borrow().iter() {
+            use std::io::Write;
+            writeln!(file, "{}", entry).map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+
 
     fn scan_path_executables(&mut self) {
         let path_var = env::var("PATH").unwrap_or_default();
@@ -75,7 +84,7 @@ impl CommandRegistry {
                 for entry in entries {
                     if let Ok(entry) = entry {
                         let file_name = entry.file_name().into_string().unwrap_or_default();
-                        
+
                         if self.executables.contains_key(&file_name) {
                             continue;
                         }

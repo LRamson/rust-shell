@@ -1,26 +1,40 @@
 use super::{Command, ShellStatus, CommandRegistry};
-use std::{io::Write};
+use std::io::Write;
 
 pub struct HistoryCommand;
 
 impl Command for HistoryCommand {
     fn execute(&self, args: &[String], registry: &CommandRegistry, output: &mut dyn Write) -> Result<ShellStatus, String> {
+        match args.first().map(|s| s.as_str()) {
+            Some("-w") => {
+                let path = args.get(1).ok_or("history: -w: argument required")?;
+                registry.write_history_to_file(path)?;
+                Ok(ShellStatus::Continue)
+            },
+            
+            Some("-r") => {
+                let path = args.get(1).ok_or("history: -r: argument required")?;
+                registry.load_history_from_file(path)?;
+                Ok(ShellStatus::Continue)
+            },
+        
+            _ => self.list_history(args, registry, output),
+        }
+    }
+
+    fn get_name(&self) -> &str {
+        "history"
+    }
+}
+
+impl HistoryCommand {
+    fn list_history(&self, args: &[String], registry: &CommandRegistry, output: &mut dyn Write) -> Result<ShellStatus, String> {
         let history = registry.get_history();
         
         let limit = match args.first() {
-            Some(arg) => {
-                if arg == "-r" {
-                    match args.get(1) {
-                        Some(path_arg) => registry.load_history_from_file(path_arg)?,
-                        None => return Err("history: -r requires a path argument".to_string()),
-                    }
-                    return Ok(ShellStatus::Continue);
-                }
-                
-                arg.parse::<usize>()
-                .map_err(|_| format!("history: {}: numeric argument required", arg))?
-            },
-            None => history.len(), 
+            Some(arg) => arg.parse::<usize>()
+                .map_err(|_| format!("history: {}: numeric argument required", arg))?,
+            None => history.len(),
         };
 
         let start_index = history.len().saturating_sub(limit);
@@ -30,9 +44,5 @@ impl Command for HistoryCommand {
         }
 
         Ok(ShellStatus::Continue)
-    }
-
-    fn get_name(&self) -> &str {
-        "history"
     }
 }
