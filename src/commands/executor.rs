@@ -108,12 +108,14 @@ impl<'a> ShellExecutor<'a> {
         input: &mut PipeState,
         is_last: bool
     ) -> Result<(PipeState, ShellStatus), String> {
-        
+
         let full_path = match self.registry.get_executable_path(&cmd.command) {
             Some(p) => p,
             None => return Err(format!("{}: command not found", cmd.command)),
         };
         
+        eprintln!("[DEBUG] Comando: '{}' | Caminho Resolvido: '{}'", cmd.command, full_path);
+
         let stdin = match input {
             PipeState::Process(child) => {
                 if let Some(out) = child.stdout.take() {
