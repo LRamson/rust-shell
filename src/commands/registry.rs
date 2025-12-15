@@ -75,6 +75,11 @@ impl CommandRegistry {
                 for entry in entries {
                     if let Ok(entry) = entry {
                         let file_name = entry.file_name().into_string().unwrap_or_default();
+                        
+                        if self.executables.contains_key(&file_name) {
+                            continue;
+                        }
+
                         let full_path = format!("{}/{}", path, file_name);
                         if fs::metadata(&full_path).map(|m| m.permissions().mode() & 0o111 != 0).unwrap_or(false) {
                             self.register_executable(&file_name, &full_path);
