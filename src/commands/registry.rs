@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
 use std::{env, fs};
+use crate::utils::open_file;
 
 pub struct CommandRegistry {
     pub builtins: HashMap<String, Box<dyn Command>>,
@@ -64,8 +65,8 @@ impl CommandRegistry {
         Ok(())
     }
 
-    pub fn write_history_to_file(&self, path: &str) -> Result<(), String> {
-        let mut file = fs::File::create(path).map_err(|e| e.to_string())?;
+    pub fn write_history_to_file(&self, path: &str, append: bool) -> Result<(), String> {
+        let mut file = open_file(path, append)?;
         for entry in self.history.borrow().iter() {
             use std::io::Write;
             writeln!(file, "{}", entry).map_err(|e| e.to_string())?;

@@ -1,9 +1,9 @@
 use std::os::unix::process::CommandExt;
 use std::process::{Command as ProcessCommand, Stdio, Child};
-use std::fs::{File, OpenOptions};
 use std::io::{self, Write}; 
 use super::{CommandRegistry, ShellStatus};
-use crate::utils::ParsedCommand;
+use crate::utils::{ParsedCommand};
+use crate::utils::open_file;
 
 enum PipeState {
     None,
@@ -65,7 +65,7 @@ impl<'a> ShellExecutor<'a> {
         
         let mut output_buffer = Vec::new();
         let mut writer: Box<dyn Write> = if let Some(path) = &cmd.stdout_redirect {
-            let file = self.open_file(path, cmd.stdout_redirect_append)?;
+            let file = open_file(path, cmd.stdout_redirect_append)?;
             Box::new(file)
         } else if !is_last {
             Box::new(&mut output_buffer)
@@ -74,7 +74,7 @@ impl<'a> ShellExecutor<'a> {
         };
 
         if let Some(path) = &cmd.stderr_redirect {
-            let _ = self.open_file(path, cmd.stderr_redirect_append)?;
+            let _ = open_file(path, cmd.stderr_redirect_append)?;
         }
 
         let result = builtin.execute(&cmd.args, self.registry, &mut *writer);
@@ -91,7 +91,7 @@ impl<'a> ShellExecutor<'a> {
             },
             Err(e) => {
                 if let Some(path) = &cmd.stderr_redirect {
-                    let mut file = self.open_file(path, true)?; // Forçamos append aqui para não truncar o que acabámos de criar
+                    let mut file = open_file(path, true)?; // Forçamos append aqui para não truncar o que acabámos de criar
                     writeln!(file, "{}", e).map_err(|e| e.to_string())?;
                     Ok((PipeState::None, ShellStatus::Continue))
                 } else {
@@ -129,7 +129,7 @@ impl<'a> ShellExecutor<'a> {
         };
 
         let (stdout, creates_pipe) = if let Some(path) = &cmd.stdout_redirect {
-            let file = self.open_file(path, cmd.stdout_redirect_append)?;
+            let file = open_file(path, cmd.stdout_redirect_append)?;
             (Stdio::from(file), false)
         } else if !is_last {
             (Stdio::piped(), true)
@@ -138,7 +138,7 @@ impl<'a> ShellExecutor<'a> {
         };
 
         let stderr = if let Some(path) = &cmd.stderr_redirect {
-            let file = self.open_file(path, cmd.stderr_redirect_append)?;
+            let file = open_file(path, cmd.stderr_redirect_append)?;
             Stdio::from(file)
         } else {
             Stdio::inherit()
@@ -170,15 +170,5 @@ impl<'a> ShellExecutor<'a> {
             child.wait().map_err(|e| e.to_string())?;
             Ok((PipeState::None, ShellStatus::Continue))
         }
-    }
-
-    fn open_file(&self, path: &str, append: bool) -> Result<File, String> {
-        OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(!append)
-            .append(append)
-            .open(path)
-            .map_err(|e| format!("Failed to open {}: {}", path, e))
     }
 }

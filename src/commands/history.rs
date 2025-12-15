@@ -8,7 +8,13 @@ impl Command for HistoryCommand {
         match args.first().map(|s| s.as_str()) {
             Some("-w") => {
                 let path = args.get(1).ok_or("history: -w: argument required")?;
-                registry.write_history_to_file(path)?;
+                registry.write_history_to_file(path, false)?;
+                Ok(ShellStatus::Continue)
+            },
+
+            Some("-a") => {
+                let path = args.get(1).ok_or("history: -a: argument required")?;
+                registry.write_history_to_file(path, true)?;
                 Ok(ShellStatus::Continue)
             },
             
