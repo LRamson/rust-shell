@@ -141,7 +141,12 @@ impl<'a> ShellExecutor<'a> {
             Stdio::inherit()
         };
 
-        let mut child = ProcessCommand::new(&cmd.command) // Usamos nome simples conforme pedido
+        let path = match self.registry.get_executable_path(&cmd.command) {
+            Some(p) => p,
+            None => return Err(format!("{}: command not found", cmd.command)),
+        };
+
+        let mut child = ProcessCommand::new(&path) // Usamos nome simples conforme pedido
             .args(&cmd.args)
             .stdin(stdin)
             .stdout(stdout)
