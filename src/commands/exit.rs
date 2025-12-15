@@ -8,7 +8,7 @@ impl Command for ExitCommand {
     fn execute(&self, _: &[String], registry: &CommandRegistry, _: &mut dyn Write) -> Result<ShellStatus, String> {
         let path_hist = env::var("HISTFILE").unwrap_or_default();
         if path_hist != "" {
-            let _ = registry.write_history_to_file(&path_hist, true);
+            let _ = registry.write_history_to_file(&path_hist, true, true);
         }
         Ok(ShellStatus::Exit)
     }

@@ -66,11 +66,11 @@ impl CommandRegistry {
         Ok(())
     }
 
-    pub fn write_history_to_file(&self, path: &str, append: bool) -> Result<(), String> {
+    pub fn write_history_to_file(&self, path: &str, append: bool, is_exit: bool) -> Result<(), String> {
         let mut file = open_file(path, append)?;
         let history = self.history.borrow();
 
-        let start_index = if append {
+        let start_index = if append && !is_exit {
             let found_index = history.iter()
                 .rev()
                 .skip(1) 
